@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>小小碳足跡精算師：拯救地球大作戰</title>
+<link rel="manifest" href="manifest.json">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="碳足跡實驗室">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        :root { --main-green: #4CAF50; --light-green: #81C784; --danger: #FF7043; --bg: #E3F2FD; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", "微軟正黑體", sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        .header { text-align: center; margin-bottom: 20px; color: #37474F; }
+        .header h1 { margin: 0; font-size: 2.2rem; }
+        .header p { margin: 5px 0 0 0; font-size: 1rem; opacity: 0.8; }
+        
+        /* 控制區 */
+        .controls { background: white; padding: 15px 25px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; display: flex; gap: 15px; align-items: center; border: 2px solid #BBDEFB; }
+        .control-group { display: flex; gap: 5px; }
+        input { border: 2px solid #ddd; padding: 8px 12px; border-radius: 20px; width: 140px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--main-green); }
+        button { padding: 10px 24px; border: none; border-radius: 25px; background: var(--main-green); color: white; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s; display: flex; align-items: center; gap: 5px; box-shadow: 0 4px #2E7D32; transform: translateY(-2px); }
+        button:active { transform: translateY(2px); box-shadow: 0 0px #2E7D32; }
+        .btn-save { background: #2196F3; box-shadow: 0 4px #1565C0; }
+        .btn-save:active { box-shadow: 0 0 #1565C0; }
+        .btn-reset { background: #FF5722; box-shadow: 0 4px #E64A19; }
+        .btn-reset:active { box-shadow: 0 0 #E64A19; }
+
+        .main-layout { display: flex; gap: 25px; width: 1200px; max-width: 98%; align-items: stretch; }
+
+        /* 左側：動畫與數值 */
+        .display-panel { flex: 1; background: white; padding: 25px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 3px solid #C8E6C9; }
+        
+        /* 雙腳踏步動畫 */
+        .foot-container { display: flex; gap: 40px; margin-top: 20px; height: 100px; }
+        .foot { width: 50px; height: 80px; background: var(--main-green); border-radius: 40% 40% 50% 50%; position: relative; opacity: 0.9; box-shadow: 0 5px 10px rgba(0,0,0,0.2); }
+        .foot::before { content: ''; position: absolute; width: 15px; height: 18px; background: var(--main-green); border-radius: 50%; top: -10px; left: 5px; box-shadow: 18px -4px 0 var(--main-green), 34px 2px 0 var(--main-green); }
+        
+        @keyframes step { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-25px) rotate(5deg); } }
+        .foot.left { animation: step var(--speed, 2s) infinite ease-in-out; }
+        .foot.right { animation: step var(--speed, 2s) infinite ease-in-out; animation-delay: calc(var(--speed, 2s) / 2); }
+
+        .score-wrap { text-align: center; margin: 20px 0; }
+        #total-val { font-size: 3.5rem; font-weight: 900; color: var(--main-green); transition: color 0.5s; text-shadow: 2px 2px 0px #eee; }
+        .unit { font-size: 1.1rem; color: #78909C; font-weight: bold; }
+
+        /* 中間：拖放區 */
+        .drop-zone { flex: 1.8; min-height: 550px; border: 4px dashed #81C784; border-radius: 30px; background: #F1F8E9; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 12px; position: relative; transition: 0.3s; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
+        .drop-zone::before { content: "把活動標籤拖到這裡開始計算！"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #AED581; font-size: 1.6rem; font-weight: bold; pointer-events: none; z-index: 0; text-align: center; width: 80%; }
+        .drop-zone.drag-over { background: #DCEDC8; border-color: #558B2F; transform: scale(1.02); }
+
+        /* 右側：真實數據清單 */
+        .list-panel { flex: 1; display: flex; flex-direction: column; gap: 12px; max-height: 600px; overflow-y: auto; padding-right: 5px; }
+        .item { padding: 12px 15px; background: white; border-radius: 15px; cursor: grab; box-shadow: 0 4px 8px rgba(0,0,0,0.08); border-left: 8px solid var(--main-green); font-size: 1rem; font-weight: bold; color: #546E7A; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .item:hover { transform: translateX(-5px); }
+        .item:active { cursor: grabbing; }
+        .item.plus { border-left-color: var(--danger); color: #D84315; }
+        .item span.val { background: #eee; padding: 4px 8px; border-radius: 10px; font-size: 0.9rem; }
+
+        /* 底部：遊戲化成果展示區 */
+        .bottom-section { width: 1200px; max-width: 98%; margin-top: 30px; display: flex; gap: 25px; height: 350px; }
+        
+        .game-stage { flex: 2.5; background: linear-gradient(to bottom, #4FC3F7 60%, #81C784 60%); border-radius: 30px; border: 4px solid #29B6F6; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .stage-title { position: absolute; top: 15px; left: 20px; background: rgba(255,255,255,0.8); padding: 8px 15px; border-radius: 20px; font-weight: bold; color: #0277BD; z-index: 10; }
+
+        /* 遊戲元素：樹與雲 */
+        .element { position: absolute; font-size: 3rem; user-select: none; }
+        .tree { bottom: -50px; animation: popUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; z-index: 5; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2)); }
+        .cloud { top: 20px; opacity: 0; animation: floatIn 15s linear infinite, fadeIn 1s forwards; z-index: 2; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1)); }
+        
+        @keyframes popUp { to { bottom: 20px; } }
+        @keyframes floatIn { from { transform: translateX(-100px); } to { transform: translateX(800px); } }
+        @keyframes fadeIn { to { opacity: 0.9; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+        .history-box { flex: 1; background: white; padding: 20px; border-radius: 30px; overflow-y: auto; border: 3px solid #B0BEC5; }
+        .history-box h3 { margin-top: 0; color: #455A64; text-align: center; }
+        .history-item { padding: 10px; margin-bottom: 8px; background: #F5F5F5; border-radius: 12px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+        .result-badge { padding: 4px 10px; border-radius: 20px; color: white; font-weight: bold; }
+        .bad-result { background: var(--danger); }
+        .good-result { background: var(--main-green); }
+
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🌍 小小碳足跡精算師：拯救地球大作戰</h1>
+    <p>任務：盡量讓碳足跡變成負的，幫地球種更多樹！</p>
+</div>
+
+<div class="controls">
+    <div class="control-group">
+        <input type="text" id="custom-name" placeholder="自訂活動名稱">
+        <input type="number" id="custom-val" placeholder="數值 (kg)">
+        <button onclick="addCustom()">➕ 新增</button>
+    </div>
+    <button class="btn-save" onclick="saveAndReward()">✨ 記錄並領取獎勵/懲罰</button>
+    <button class="btn-reset" onclick="reset()">🔄 全部重來</button>
+</div>
+
+<div class="main-layout">
+    <div class="display-panel">
+        <h3 style="margin: 0; color: #546E7A;">目前的碳足跡</h3>
+        <div class="foot-container" id="foots">
+            <div class="foot left"></div>
+            <div class="foot right"></div>
+        </div>
+        <div class="score-wrap">
+            <div id="total-val">0.000</div>
+            <div class="unit">公斤二氧化碳當量 (kg CO₂e)</div>
+        </div>
+        <div id="status-text" style="color:#90A4AE; font-weight: bold;">準備開始計算...</div>
+    </div>
+
+    <div id="dropzone" class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+
+    <div id="source-list" class="list-panel" ondragover="allowDrop(event)" ondrop="drop(event)">
+        </div>
+</div>
+
+<div class="bottom-section">
+    <div class="game-stage" id="game-stage">
+        <div class="stage-title">🌳 我們的地球家園成果區</div>
+        </div>
+
+    <div class="history-box">
+        <h3>📋 記錄板</h3>
+        <div id="history-list"></div>
+    </div>
+</div>
+
+<script>
+    // 簡化後的真實數據，適合三年級認知
+    const realData = [
+        { name: "喝一瓶可樂/沙士", val: 0.304 },
+        { name: "喝一瓶瓶裝水", val: 0.150 },
+        { name: "吃一顆雞蛋", val: 0.100 },
+        { name: "吃一片吐司", val: 0.050 },
+        { name: "用掉一包衛生紙", val: 0.400 },
+        { name: "開冷氣1小時(估計)", val: 0.500 }, // 估計值用於教學
+        { name: "搭爸爸的車去上學", val: 0.800 }, // 估計值
+        { name: "超級乖寶寶：自備水壺", val: -0.200 }, // 獎勵值放大
+        { name: "超級乖寶寶：自備餐具", val: -0.150 },
+        { name: "超級乖寶寶：走路去上學", val: -0.500 },
+        { name: "幫忙做資源回收", val: -0.300 }
+    ];
+
+    let currentTotal = 0;
+    let displayedTotal = 0;
+    let historyCount = 0;
+
+    // 初始化
+    window.onload = () => {
+        const list = document.getElementById('source-list');
+        realData.forEach((d, i) => {
+            const item = createItem(d.name, d.val, 'item-' + i);
+            list.appendChild(item);
+        });
+        updateSpeed();
+    };
+
+    function createItem(name, val, id) {
+        const div = document.createElement('div');
+        div.className = `item ${val > 0 ? 'plus' : 'minus'}`;
+        div.id = id;
+        div.draggable = true;
+        div.dataset.val = val;
+        // 使用 span 包住數值以便樣式調整
+        div.innerHTML = `${name} <span class="val">${val > 0 ? '+' : ''}${val.toFixed(2)}</span>`;
+        div.ondragstart = (e) => {
+            e.dataTransfer.setData("text", e.target.id);
+            e.target.style.opacity = '0.5';
+        };
+        div.ondragend = (e) => e.target.style.opacity = '1';
+        return div;
+    }
+
+    function allowDrop(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+    function leaveDrop(e) { e.currentTarget.classList.remove('drag-over'); }
+
+    function drop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        const id = e.dataTransfer.getData("text");
+        const el = document.getElementById(id);
+        
+        let target = e.target;
+        while(target && !target.id) target = target.parentElement;
+        
+        if (target.id === "dropzone" || target.id === "source-list") {
+            target.appendChild(el);
+            calculate();
+        }
+    }
+
+    function calculate() {
+        const items = document.getElementById('dropzone').querySelectorAll('.item');
+        currentTotal = Array.from(items).reduce((sum, item) => sum + parseFloat(item.dataset.val), 0);
+        updateSpeed();
+        animateValue();
+    }
+
+    // 平滑數值跳動
+    function animateValue() {
+        const step = (currentTotal - displayedTotal) / 8;
+        if (Math.abs(step) > 0.001) {
+            displayedTotal += step;
+            document.getElementById('total-val').innerText = displayedTotal.toFixed(3);
+            requestAnimationFrame(animateValue);
+        } else {
+            displayedTotal = currentTotal;
+            document.getElementById('total-val').innerText = displayedTotal.toFixed(3);
+        }
+        
+        const totalValEl = document.getElementById('total-val');
+        const statusText = document.getElementById('status-text');
+        if (currentTotal > 0.001) {
+            totalValEl.style.color = '#FF7043'; // 紅色警告
+            statusText.innerText = "喔喔...碳足跡在增加了!";
+            statusText.style.color = '#FF7043';
+        } else if (currentTotal < -0.001) {
+            totalValEl.style.color = '#4CAF50'; // 綠色獎勵
+            statusText.innerText = "太棒了！正在幫助地球降溫！";
+            statusText.style.color = '#4CAF50';
+        } else {
+            totalValEl.style.color = '#4CAF50';
+            statusText.innerText = "準備開始計算...";
+            statusText.style.color = '#90A4AE';
+        }
+    }
+
+    // 更新踏步速度
+    function updateSpeed() {
+        const absVal = Math.abs(currentTotal);
+        // 速度範圍從 2.5秒(慢) 到 0.3秒(快)
+        const speed = Math.max(0.3, 2.5 - (absVal * 0.8));
+        document.getElementById('foots').style.setProperty('--speed', speed + 's');
+    }
+
+    function addCustom() {
+        const name = document.getElementById('custom-name').value;
+        const val = parseFloat(document.getElementById('custom-val').value);
+        if (name && !isNaN(val)) {
+            const item = createItem(name, val, 'custom-' + Date.now());
+            document.getElementById('source-list').prepend(item);
+             // 清空輸入
+             document.getElementById('custom-name').value = '';
+             document.getElementById('custom-val').value = '';
+        }
+    }
+
+    // 核心功能：記錄並給予遊戲化回饋
+    function saveAndReward() {
+        if (Math.abs(currentTotal) < 0.01) return; // 數值太小不記錄
+
+        historyCount++;
+        const val = currentTotal.toFixed(3);
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const stage = document.getElementById('game-stage');
+        
+        // 1. 更新歷史列表
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        let resultBadge = '';
+        
+        // 2. 根據數值在場景中添加元素
+        // 設定一個閾值，例如每 0.3kg 產生一個元素
+        const threshold = 0.3;
+        let count = Math.max(1, Math.floor(Math.abs(currentTotal) / threshold));
+        // 限制一次最多產生 5 個，避免畫面爆炸
+        count = Math.min(count, 5); 
+
+        if (currentTotal > 0) {
+            // 增加碳足跡 -> 產生烏雲
+            resultBadge = `<span class="result-badge bad-result">增加 ${val} kg ☁️</span>`;
+            for(let i=0; i<count; i++) {
+                addCloud(stage);
+            }
+            // 讓場景晃動一下表示警告
+            stage.style.animation = 'shake 0.5s';
+            setTimeout(() => stage.style.animation = '', 500);
+
+        } else {
+             // 減少碳足跡 -> 產生樹木
+            resultBadge = `<span class="result-badge good-result">減少 ${val} kg 🌳</span>`;
+            for(let i=0; i<count; i++) {
+                addTree(stage);
+            }
+        }
+
+        historyItem.innerHTML = `<span>#${historyCount} ${time}</span> ${resultBadge}`;
+        document.getElementById('history-list').prepend(historyItem);
+    }
+
+    function addTree(stage) {
+        const tree = document.createElement('div');
+        tree.className = 'element tree';
+        tree.innerText = ['🌳', '🌲', '🌴'][Math.floor(Math.random()*3)]; // 隨機樹種
+        // 隨機位置，但要在草地上
+        tree.style.left = (Math.random() * 80 + 10) + '%'; 
+        tree.style.fontSize = (Math.random() * 1 + 2.5) + 'rem'; // 隨機大小
+        stage.appendChild(tree);
+    }
+
+    function addCloud(stage) {
+        const cloud = document.createElement('div');
+        cloud.className = 'element cloud';
+        cloud.innerText = ['☁️', '🌫️', '🌩️'][Math.floor(Math.random()*3)]; // 隨機雲
+        // 隨機高度與起始位置
+        cloud.style.top = (Math.random() * 40 + 5) + '%';
+        cloud.style.left = - (Math.random() * 100 + 50) + 'px';
+        // 隨機飄動速度
+        cloud.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        stage.appendChild(cloud);
+    }
+
+    function reset() {
+        const zone = document.getElementById('dropzone');
+        const list = document.getElementById('source-list');
+        const stage = document.getElementById('game-stage');
+        
+        // 標籤歸位
+        while (zone.firstChild) list.appendChild(zone.firstChild);
+        
+        // 清空遊戲場景
+        const elements = stage.querySelectorAll('.element');
+        elements.forEach(el => el.remove());
+
+        calculate();
+        // 重置提示文字
+        document.getElementById('status-text').innerText = "準備開始計算...";
+        document.getElementById('status-text').style.color = '#90A4AE';
+    }
+</script>
+</body>
+</html>

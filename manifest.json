@@ -1,0 +1,22 @@
+{
+  "short_name": "碳足跡實驗室",
+  "name": "小小碳足跡精算師：拯救地球大作戰",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#E3F2FD",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#4CAF50",
+  "description": "給小朋友的碳足跡計算工具，透過遊戲化方式學習環保。"
+}
