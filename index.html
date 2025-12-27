@@ -58,6 +58,16 @@
         .history-box { background: white; padding: 15px; border-radius: 20px; max-height: 150px; overflow-y: auto; }
     </style>
 </head>
+    <script>
+    // 這段是讓網頁變身成 APP 的關鍵指令
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('APP 註冊成功！', reg))
+                .catch(err => console.log('註冊失敗', err));
+        });
+    }
+</script>
 <body>
 
 <div class="header">
@@ -186,3 +196,4 @@
 </script>
 </body>
 </html>
+
